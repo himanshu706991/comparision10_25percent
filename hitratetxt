@@ -1,0 +1,1075 @@
+
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+from scipy import stats
+
+# Function to generate random dates
+def random_dates(start, end, n=10):
+    return [start + timedelta(days=np.random.randint(0, (end - start).days)) for _ in range(n)]
+
+# Parameters
+num_records = 10000
+start_date = datetime.now() - timedelta(days=4*365)
+end_date = datetime.now()
+
+# Expanded categories
+business_lines = [
+    "Retail", "Corporate Banking", "Investment Banking", "Insurance",
+    "Wealth Management", "Asset Management", "Private Banking",
+    "Credit Card Services", "Mortgage Lending", "Financial Advisory"
+]
+
+event_types = [
+    "Fraud", "System Failure", "Theft", "Compliance", "Natural Disaster",
+    "Cyber Attack", "Market Risk", "Operational Error", "Vendor Risk", "Regulatory Violation"
+]
+
+# Generate data
+data = {
+    "Date": random_dates(start_date, end_date, num_records),
+    "Unique Event ID": [f"EID{str(i).zfill(5)}" for i in range(num_records)],
+    "Event Type": np.random.choice(event_types, num_records),
+    "Business Line": np.random.choice(business_lines, num_records),
+    "Event Description": np.random.choice(
+        [
+            "Unauthorized transaction", "Server downtime", "Lost assets", 
+            "Regulatory fines", "Data breach", "Network failure", 
+            "Inadequate compliance", "Financial misstatement", 
+            "Supplier issues", "Internal fraud"
+        ],
+        num_records
+    ),
+    "Net Loss Amount": np.random.choice(
+        [np.random.uniform(-10000, 0) for _ in range(num_records // 2)] + 
+        [np.random.uniform(0, 10000) for _ in range(num_records // 2)],
+        num_records
+    )
+}
+
+# Create DataFrame
+df = pd.DataFrame(data)
+
+# Add a Year column
+df['Year'] = df['Date'].dt.year
+# Add a Quarter column
+df['Quarter'] = df['Date'].dt.to_period('Q')
+yearly_aggregated = df.groupby(['Year', 'Business Line', 'Event Type']).agg(
+    Total_Net_Loss=('Net Loss Amount', 'sum'),
+    Event_Count=('Unique Event ID', 'count')
+).reset_index()
+quarterly_aggregated = df.groupby(['Year', 'Quarter', 'Business Line', 'Event Type']).agg(
+    Total_Net_Loss=('Net Loss Amount', 'sum'),
+    Event_Count=('Unique Event ID', 'count')
+).reset_index()
+# Add Moving Average for Net Loss
+yearly_aggregated['Moving_Avg_Net_Loss'] = yearly_aggregated.groupby(['Business Line', 'Event Type'])['Total_Net_Loss'].transform(lambda x: x.rolling(window=2, min_periods=1).mean())
+quarterly_aggregated['Moving_Avg_Net_Loss'] = quarterly_aggregated.groupby(['Business Line', 'Event Type'])['Total_Net_Loss'].transform(lambda x: x.rolling(window=2, min_periods=1).mean())
+from sklearn.metrics import mean_squared_error
+
+# Example: Compare actual and predicted for Net Loss
+yearly_actuals = yearly_aggregated['Total_Net_Loss']
+yearly_predictions = yearly_actuals * 0.95  # Assume a prediction model
+
+mse_yearly = mean_squared_error(yearly_actuals, yearly_predictions)
+rmse_yearly = np.sqrt(mse_yearly)
+
+quarterly_actuals = quarterly_aggregated['Total_Net_Loss']
+quarterly_predictions = quarterly_actuals * 0.95  # Assume a prediction model
+
+mse_quarterly = mean_squared_error(quarterly_actuals, quarterly_predictions)
+rmse_quarterly = np.sqrt(mse_quarterly)
+# Define threshold
+threshold = 5000
+
+# Hit Rate for Yearly
+yearly_aggregated['Hit'] = yearly_aggregated['Total_Net_Loss'] > threshold
+hit_rate_yearly = yearly_aggregated['Hit'].mean()
+
+# Hit Rate for Quarterly
+quarterly_aggregated['Hit'] = quarterly_aggregated['Total_Net_Loss'] > threshold
+hit_rate_quarterly = quarterly_aggregated['Hit'].mean()
+Compare Results
+Once the metrics are calculated for both Yearly and Quarterly data, you can compare them directly. For example:
+
+Metric	Yearly Value	Quarterly Value
+MSE (Net Loss)	X	Y
+RMSE (Net Loss)	X	Y
+Hit Rate	X%	Y%
+Moving Average	Trends	Trends
+  Cell In[24], line 1
+    Compare Results
+            ^
+SyntaxError: invalid syntax
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Aggregate Yearly Data for Bar Chart
+yearly_summary = yearly_aggregated.groupby('Year').agg(
+    Total_Net_Loss=('Total_Net_Loss', 'sum'),
+    Event_Count=('Event_Count', 'sum')
+).reset_index()
+
+# Aggregate Quarterly Data for Bar Chart
+quarterly_summary = quarterly_aggregated.groupby('Quarter').agg(
+    Total_Net_Loss=('Total_Net_Loss', 'sum'),
+    Event_Count=('Event_Count', 'sum')
+).reset_index()
+
+# Plot Yearly Data
+plt.figure(figsize=(14, 7))
+sns.barplot(data=yearly_summary, x='Year', y='Total_Net_Loss', color='blue', label='Total Net Loss')
+plt.title("Yearly Total Net Loss")
+plt.ylabel("Net Loss Amount")
+plt.xlabel("Year")
+plt.legend()
+plt.show()
+
+# Plot Quarterly Data
+plt.figure(figsize=(14, 7))
+sns.barplot(data=quarterly_summary, x='Quarter', y='Total_Net_Loss', color='orange', label='Total Net Loss')
+plt.title("Quarterly Total Net Loss")
+plt.ylabel("Net Loss Amount")
+plt.xlabel("Quarter")
+plt.xticks(rotation=45)
+plt.legend()
+plt.show()
+
+
+# Line chart for yearly moving averages
+plt.figure(figsize=(14, 7))
+sns.lineplot(data=yearly_aggregated, x='Year', y='Moving_Avg_Net_Loss', hue='Business Line', marker='o')
+plt.title("Yearly Moving Average of Net Loss")
+plt.ylabel("Moving Average of Net Loss")
+plt.xlabel("Year")
+plt.legend(title='Business Line', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.grid(True)
+plt.show()
+
+# Line chart for quarterly moving averages
+plt.figure(figsize=(14, 7))
+sns.lineplot(data=quarterly_aggregated, x='Quarter', y='Moving_Avg_Net_Loss', hue='Business Line', marker='o')
+plt.title("Quarterly Moving Average of Net Loss")
+plt.ylabel("Moving Average of Net Loss")
+plt.xlabel("Quarter")
+plt.xticks(rotation=45)
+plt.legend(title='Business Line', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.grid(True)
+plt.show()
+
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+File lib.pyx:2391, in pandas._libs.lib.maybe_convert_numeric()
+
+TypeError: Invalid object type
+
+During handling of the above exception, another exception occurred:
+
+TypeError                                 Traceback (most recent call last)
+Cell In[28], line 13
+     11 # Line chart for quarterly moving averages
+     12 plt.figure(figsize=(14, 7))
+---> 13 sns.lineplot(data=quarterly_aggregated, x='Quarter', y='Moving_Avg_Net_Loss', hue='Business Line', marker='o')
+     14 plt.title("Quarterly Moving Average of Net Loss")
+     15 plt.ylabel("Moving Average of Net Loss")
+
+File ~\AppData\Local\Programs\Python\Python312\Lib\site-packages\seaborn\relational.py:515, in lineplot(data, x, y, hue, size, style, units, weights, palette, hue_order, hue_norm, sizes, size_order, size_norm, dashes, markers, style_order, estimator, errorbar, n_boot, seed, orient, sort, err_style, err_kws, legend, ci, ax, **kwargs)
+    512 color = kwargs.pop("color", kwargs.pop("c", None))
+    513 kwargs["color"] = _default_color(ax.plot, hue, color, kwargs)
+--> 515 p.plot(ax, kwargs)
+    516 return ax
+
+File ~\AppData\Local\Programs\Python\Python312\Lib\site-packages\seaborn\relational.py:276, in _LinePlotter.plot(self, ax, kws)
+    268 # TODO How to handle NA? We don't want NA to propagate through to the
+    269 # estimate/CI when some values are present, but we would also like
+    270 # matplotlib to show "gaps" in the line when all values are missing.
+   (...)
+    273 
+    274 # Loop over the semantic subsets and add to the plot
+    275 grouping_vars = "hue", "size", "style"
+--> 276 for sub_vars, sub_data in self.iter_data(grouping_vars, from_comp_data=True):
+    278     if self.sort:
+    279         sort_vars = ["units", orient, other]
+
+File ~\AppData\Local\Programs\Python\Python312\Lib\site-packages\seaborn\_base.py:902, in VectorPlotter.iter_data(self, grouping_vars, reverse, from_comp_data, by_facet, allow_empty, dropna)
+    899 grouping_vars = [var for var in grouping_vars if var in self.variables]
+    901 if from_comp_data:
+--> 902     data = self.comp_data
+    903 else:
+    904     data = self.plot_data
+
+File ~\AppData\Local\Programs\Python\Python312\Lib\site-packages\seaborn\_base.py:1000, in VectorPlotter.comp_data(self)
+    995 if var in self.var_levels:
+    996     # TODO this should happen in some centralized location
+    997     # it is similar to GH2419, but more complicated because
+    998     # supporting `order` in categorical plots is tricky
+    999     orig = orig[orig.isin(self.var_levels[var])]
+-> 1000 comp = pd.to_numeric(converter.convert_units(orig)).astype(float)
+   1001 transform = converter.get_transform().transform
+   1002 parts.append(pd.Series(transform(comp), orig.index, name=orig.name))
+
+File ~\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\tools\numeric.py:232, in to_numeric(arg, errors, downcast, dtype_backend)
+    230 coerce_numeric = errors not in ("ignore", "raise")
+    231 try:
+--> 232     values, new_mask = lib.maybe_convert_numeric(  # type: ignore[call-overload]
+    233         values,
+    234         set(),
+    235         coerce_numeric=coerce_numeric,
+    236         convert_to_masked_nullable=dtype_backend is not lib.no_default
+    237         or isinstance(values_dtype, StringDtype)
+    238         and not values_dtype.storage == "pyarrow_numpy",
+    239     )
+    240 except (ValueError, TypeError):
+    241     if errors == "raise":
+
+File lib.pyx:2433, in pandas._libs.lib.maybe_convert_numeric()
+
+TypeError: Invalid object type at position 0
+
+# Yearly Hit Rate by Event Type
+yearly_hit_rate = yearly_aggregated.groupby(['Year', 'Event Type'])['Hit'].mean().unstack()
+
+plt.figure(figsize=(12, 6))
+sns.heatmap(yearly_hit_rate, annot=True, fmt=".2%", cmap="coolwarm", linewidths=0.5)
+plt.title("Yearly Hit Rate by Event Type")
+plt.ylabel("Year")
+plt.xlabel("Event Type")
+plt.show()
+
+# Quarterly Hit Rate by Event Type
+quarterly_hit_rate = quarterly_aggregated.groupby(['Quarter', 'Event Type'])['Hit'].mean().unstack()
+
+plt.figure(figsize=(12, 6))
+sns.heatmap(quarterly_hit_rate, annot=True, fmt=".2%", cmap="coolwarm", linewidths=0.5)
+plt.title("Quarterly Hit Rate by Event Type")
+plt.ylabel("Quarter")
+plt.xlabel("Event Type")
+plt.show()
+
+
+# Scatter plot for Yearly
+plt.figure(figsize=(10, 6))
+plt.scatter(yearly_aggregated['Total_Net_Loss'], yearly_predictions, c='blue', alpha=0.6, label='Yearly Data')
+plt.plot([0, max(yearly_aggregated['Total_Net_Loss'])], [0, max(yearly_aggregated['Total_Net_Loss'])], color='red', linestyle='--', label='Ideal Prediction')
+plt.title("Yearly MSE vs RMSE")
+plt.xlabel("Actual Total Net Loss")
+plt.ylabel("Predicted Total Net Loss")
+plt.legend()
+plt.show()
+
+# Scatter plot for Quarterly
+plt.figure(figsize=(10, 6))
+plt.scatter(quarterly_aggregated['Total_Net_Loss'], quarterly_predictions, c='orange', alpha=0.6, label='Quarterly Data')
+plt.plot([0, max(quarterly_aggregated['Total_Net_Loss'])], [0, max(quarterly_aggregated['Total_Net_Loss'])], color='red', linestyle='--', label='Ideal Prediction')
+plt.title("Quarterly MSE vs RMSE")
+plt.xlabel("Actual Total Net Loss")
+plt.ylabel("Predicted Total Net Loss")
+plt.legend()
+plt.show()
+
+
+To compare MAE (Mean Absolute Error), MSE (Mean Squared Error), RMSE (Root Mean Squared Error), and Hit Rate for both Yearly and Quarterly aggregated data, we can follow these steps:
+
+Resample the data into quarterly and yearly periods. Calculate MAE, MSE, RMSE, and Hit Rate for both periods. Print the metrics for comparison. Here’s the code that calculates all the required metrics and provides a comparison:
+
+import pandas as pd
+import numpy as np
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from math import sqrt
+
+# Function to calculate MAE, MSE, RMSE, and Hit Rate for the data
+def calculate_metrics(df, threshold=5000):
+    # For simplicity, assume predicted values are the actual values with some noise
+    df['Predicted Net Loss'] = df['Net Loss Amount'] + np.random.uniform(-1000, 1000, size=len(df))  # Add random noise to actual values
+
+    # Calculate MAE (Mean Absolute Error)
+    mae = mean_absolute_error(df['Net Loss Amount'], df['Predicted Net Loss'])
+    
+    # Calculate MSE (Mean Squared Error)
+    mse = mean_squared_error(df['Net Loss Amount'], df['Predicted Net Loss'])
+    
+    # Calculate RMSE (Root Mean Squared Error)
+    rmse = sqrt(mse)
+    
+    # Calculate Hit Rate (Example: Correct if the predicted loss exceeds threshold)
+    correct_predictions = np.sum(df['Predicted Net Loss'] >= threshold)
+    hit_rate = correct_predictions / len(df)
+
+    return mae, mse, rmse, hit_rate
+
+# Resample data for quarterly and yearly analysis
+df['Year'] = df['Date'].dt.year
+df['Quarter'] = df['Date'].dt.to_period('Q')
+
+# Aggregate data by Year
+yearly_aggregated = df.groupby('Year').agg({'Net Loss Amount': ['sum', 'mean', 'count']}).reset_index()
+
+# Aggregate data by Quarter
+quarterly_aggregated = df.groupby('Quarter').agg({'Net Loss Amount': ['sum', 'mean', 'count']}).reset_index()
+
+# Calculate Metrics for Yearly and Quarterly Data
+yearly_mae, yearly_mse, yearly_rmse, yearly_hit_rate = calculate_metrics(yearly_aggregated)
+quarterly_mae, quarterly_mse, quarterly_rmse, quarterly_hit_rate = calculate_metrics(quarterly_aggregated)
+
+# Print the metrics results for comparison
+print(f"Metrics Results Comparison:")
+
+# Yearly Metrics
+print(f"\nYearly Metrics:")
+print(f"MAE (Mean Absolute Error): {yearly_mae:.2f}")
+print(f"MSE (Mean Squared Error): {yearly_mse:.2f}")
+print(f"RMSE (Root Mean Squared Error): {yearly_rmse:.2f}")
+print(f"Hit Rate: {yearly_hit_rate:.2%}")
+
+# Quarterly Metrics
+print(f"\nQuarterly Metrics:")
+print(f"MAE (Mean Absolute Error): {quarterly_mae:.2f}")
+print(f"MSE (Mean Squared Error): {quarterly_mse:.2f}")
+print(f"RMSE (Root Mean Squared Error): {quarterly_rmse:.2f}")
+print(f"Hit Rate: {quarterly_hit_rate:.2%}")
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+~\AppData\Local\Temp\ipykernel_14948\1598305804.py in ?()
+     33 # Aggregate data by Quarter
+     34 quarterly_aggregated = df.groupby('Quarter').agg({'Net Loss Amount': ['sum', 'mean', 'count']}).reset_index()
+     35 
+     36 # Calculate Metrics for Yearly and Quarterly Data
+---> 37 yearly_mae, yearly_mse, yearly_rmse, yearly_hit_rate = calculate_metrics(yearly_aggregated)
+     38 quarterly_mae, quarterly_mse, quarterly_rmse, quarterly_hit_rate = calculate_metrics(quarterly_aggregated)
+     39 
+     40 # Print the metrics results for comparison
+
+~\AppData\Local\Temp\ipykernel_14948\1598305804.py in ?(df, threshold)
+      7 def calculate_metrics(df, threshold=5000):
+      8     # For simplicity, assume predicted values are the actual values with some noise
+----> 9     df['Predicted Net Loss'] = df['Net Loss Amount'] + np.random.uniform(-1000, 1000, size=len(df))  # Add random noise to actual values
+     10 
+     11     # Calculate MAE (Mean Absolute Error)
+     12     mae = mean_absolute_error(df['Net Loss Amount'], df['Predicted Net Loss'])
+
+~\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\ops\common.py in ?(self, other)
+     72                     return NotImplemented
+     73 
+     74         other = item_from_zerodim(other)
+     75 
+---> 76         return method(self, other)
+
+~\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\arraylike.py in ?(self, other)
+    182         deer      NaN     NaN
+    183         elk       1.7     NaN
+    184         moose     3.0     NaN
+    185         """
+--> 186         return self._arith_method(other, operator.add)
+
+~\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\frame.py in ?(self, other, op)
+   7906 
+   7907         axis: Literal[1] = 1  # only relevant for Series other case
+   7908         other = ops.maybe_prepare_scalar_for_op(other, (self.shape[axis],))
+   7909 
+-> 7910         self, other = self._align_for_op(other, axis, flex=True, level=None)
+   7911 
+   7912         with np.errstate(all="ignore"):
+   7913             new_data = self._dispatch_frame_op(other, op, axis=axis)
+
+~\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\frame.py in ?(self, other, axis, flex, level)
+   8137             return right
+   8138 
+   8139         if isinstance(right, np.ndarray):
+   8140             if right.ndim == 1:
+-> 8141                 right = to_series(right)
+   8142 
+   8143             elif right.ndim == 2:
+   8144                 # We need to pass dtype=right.dtype to retain object dtype
+
+~\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\frame.py in ?(right)
+   8129                     )
+   8130                 right = left._constructor_sliced(right, index=left.index, dtype=dtype)
+   8131             else:
+   8132                 if len(left.columns) != len(right):
+-> 8133                     raise ValueError(
+   8134                         msg.format(req_len=len(left.columns), given_len=len(right))
+   8135                     )
+   8136                 right = left._constructor_sliced(right, index=left.columns, dtype=dtype)
+
+ValueError: Unable to coerce to Series, length must be 3: given 5
+import pandas as pd
+import numpy as np
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from math import sqrt
+
+# Function to calculate MAE, MSE, RMSE, and Hit Rate for the data
+def calculate_metrics(aggregated_df, threshold=5000):
+    # For simplicity, assume predicted values are the actual values with some noise
+    aggregated_df['Predicted Net Loss'] = aggregated_df['Net Loss Amount'] + np.random.uniform(-1000, 1000, size=len(aggregated_df))  # Add random noise to actual values
+
+    # Calculate MAE (Mean Absolute Error)
+    mae = mean_absolute_error(aggregated_df['Net Loss Amount'], aggregated_df['Predicted Net Loss'])
+    
+    # Calculate MSE (Mean Squared Error)
+    mse = mean_squared_error(aggregated_df['Net Loss Amount'], aggregated_df['Predicted Net Loss'])
+    
+    # Calculate RMSE (Root Mean Squared Error)
+    rmse = sqrt(mse)
+    
+    # Calculate Hit Rate (Example: Correct if the predicted loss exceeds threshold)
+    correct_predictions = np.sum(aggregated_df['Predicted Net Loss'] >= threshold)
+    hit_rate = correct_predictions / len(aggregated_df)
+
+    return mae, mse, rmse, hit_rate
+
+# Parameters for data generation (same as before)
+num_records = 10000
+start_date = pd.to_datetime('2019-01-01')
+end_date = pd.to_datetime('2023-01-01')
+
+business_lines = [
+    "Retail", "Corporate Banking", "Investment Banking", "Insurance",
+    "Wealth Management", "Asset Management", "Private Banking",
+    "Credit Card Services", "Mortgage Lending", "Financial Advisory"
+]
+
+event_types = [
+    "Fraud", "System Failure", "Theft", "Compliance", "Natural Disaster",
+    "Cyber Attack", "Market Risk", "Operational Error", "Vendor Risk", "Regulatory Violation"
+]
+
+# Function to generate random dates
+def random_dates(start, end, n=10):
+    return [start + timedelta(days=np.random.randint(0, (end - start).days)) for _ in range(n)]
+
+# Generate data
+data = {
+    "Date": random_dates(start_date, end_date, num_records),
+    "Unique Event ID": [f"EID{str(i).zfill(5)}" for i in range(num_records)],
+    "Event Type": np.random.choice(event_types, num_records),
+    "Business Line": np.random.choice(business_lines, num_records),
+    "Event Description": np.random.choice(
+        [
+            "Unauthorized transaction", "Server downtime", "Lost assets", 
+            "Regulatory fines", "Data breach", "Network failure", 
+            "Inadequate compliance", "Financial misstatement", 
+            "Supplier issues", "Internal fraud"
+        ],
+        num_records
+    ),
+    "Net Loss Amount": np.random.choice(
+        [np.random.uniform(-10000, 0) for _ in range(num_records // 2)] + 
+        [np.random.uniform(0, 10000) for _ in range(num_records // 2)],
+        num_records
+    )
+}
+
+# Create DataFrame
+df = pd.DataFrame(data)
+
+# Add Year and Quarter columns
+df['Year'] = df['Date'].dt.year
+df['Quarter'] = df['Date'].dt.to_period('Q')
+
+# Aggregate data by Year
+yearly_aggregated = df.groupby('Year').agg({'Net Loss Amount': 'sum'}).reset_index()
+
+# Aggregate data by Quarter
+quarterly_aggregated = df.groupby('Quarter').agg({'Net Loss Amount': 'sum'}).reset_index()
+
+# Calculate Metrics for Yearly and Quarterly Data
+yearly_mae, yearly_mse, yearly_rmse, yearly_hit_rate = calculate_metrics(yearly_aggregated)
+quarterly_mae, quarterly_mse, quarterly_rmse, quarterly_hit_rate = calculate_metrics(quarterly_aggregated)
+
+# Print the metrics results for comparison
+print(f"Metrics Results Comparison:")
+
+# Yearly Metrics
+print(f"\nYearly Metrics:")
+print(f"MAE (Mean Absolute Error): {yearly_mae:.2f}")
+print(f"MSE (Mean Squared Error): {yearly_mse:.2f}")
+print(f"RMSE (Root Mean Squared Error): {yearly_rmse:.2f}")
+print(f"Hit Rate: {yearly_hit_rate:.2%}")
+
+# Quarterly Metrics
+print(f"\nQuarterly Metrics:")
+print(f"MAE (Mean Absolute Error): {quarterly_mae:.2f}")
+print(f"MSE (Mean Squared Error): {quarterly_mse:.2f}")
+print(f"RMSE (Root Mean Squared Error): {quarterly_rmse:.2f}")
+print(f"Hit Rate: {quarterly_hit_rate:.2%}")
+Metrics Results Comparison:
+
+Yearly Metrics:
+MAE (Mean Absolute Error): 422.31
+MSE (Mean Squared Error): 260949.97
+RMSE (Root Mean Squared Error): 510.83
+Hit Rate: 50.00%
+
+Quarterly Metrics:
+MAE (Mean Absolute Error): 529.45
+MSE (Mean Squared Error): 325593.65
+RMSE (Root Mean Squared Error): 570.61
+Hit Rate: 50.00%
+ 
+ 
+ 
+Computing Metrics for Yearly and Quarterly Data
+# Metrics Calculation
+from sklearn.metrics import mean_squared_error
+import pandas as pd
+import numpy as np
+
+# Generate predictions for demonstration (Replace with real predictions if available)
+yearly_aggregated['Prediction_Net_Loss'] = yearly_aggregated['Total_Net_Loss'] * np.random.uniform(0.9, 1.1, len(yearly_aggregated))
+quarterly_aggregated['Prediction_Net_Loss'] = quarterly_aggregated['Total_Net_Loss'] * np.random.uniform(0.9, 1.1, len(quarterly_aggregated))
+
+# Moving Average
+yearly_aggregated['Moving_Avg_Net_Loss'] = yearly_aggregated['Total_Net_Loss'].rolling(window=2, min_periods=1).mean()
+quarterly_aggregated['Moving_Avg_Net_Loss'] = quarterly_aggregated['Total_Net_Loss'].rolling(window=2, min_periods=1).mean()
+
+# MSE and RMSE
+yearly_mse = mean_squared_error(yearly_aggregated['Total_Net_Loss'], yearly_aggregated['Prediction_Net_Loss'])
+yearly_rmse = np.sqrt(yearly_mse)
+
+quarterly_mse = mean_squared_error(quarterly_aggregated['Total_Net_Loss'], quarterly_aggregated['Prediction_Net_Loss'])
+quarterly_rmse = np.sqrt(quarterly_mse)
+
+# Hit Rate (Example: Threshold-based Hit)
+threshold = 10000  # Example threshold for a "hit"
+yearly_aggregated['Hit'] = yearly_aggregated['Total_Net_Loss'] > threshold
+quarterly_aggregated['Hit'] = quarterly_aggregated['Total_Net_Loss'] > threshold
+
+yearly_hit_rate = yearly_aggregated['Hit'].mean()
+quarterly_hit_rate = quarterly_aggregated['Hit'].mean()
+
+# Results Table
+results_table = pd.DataFrame({
+    "Metric": ["MSE", "RMSE", "Hit Rate", "Moving Average"],
+    "Yearly": [yearly_mse, yearly_rmse, yearly_hit_rate, "See Graph"],
+    "Quarterly": [quarterly_mse, quarterly_rmse, quarterly_hit_rate, "See Graph"]
+})
+
+print(results_table)
+           Metric          Yearly     Quarterly
+0             MSE  2457498.801341  690346.03891
+1            RMSE     1567.641158    830.870651
+2        Hit Rate        0.350318      0.238181
+3  Moving Average       See Graph     See Graph
+Annotated Visualizations Modify the previous visualizations to include metric results in the graphs:
+Bar Chart with Metric Results
+
+# Adding Metric Results to Bar Chart
+plt.figure(figsize=(14, 7))
+sns.barplot(data=yearly_summary, x='Year', y='Total_Net_Loss', color='blue', label='Total Net Loss')
+
+# Annotate Metrics
+plt.text(0.5, yearly_summary['Total_Net_Loss'].max(), f"MSE: {yearly_mse:.2f}\nRMSE: {yearly_rmse:.2f}\nHit Rate: {yearly_hit_rate:.2%}",
+         fontsize=12, color="black", ha="center", va="bottom")
+
+plt.title("Yearly Total Net Loss with Metrics")
+plt.ylabel("Net Loss Amount")
+plt.xlabel("Year")
+plt.legend()
+plt.show()
+
+# Line chart for Moving Average with Annotation
+plt.figure(figsize=(14, 7))
+
+# Line plot for Moving Average of Net Loss
+sns.lineplot(data=yearly_aggregated, x='Year', y='Moving_Avg_Net_Loss', hue='Business Line', marker='o')
+
+# Find the maximum Moving Average value for annotation placement
+max_moving_avg = yearly_aggregated['Moving_Avg_Net_Loss'].max()
+
+# Annotate RMSE and Hit Rate near the top of the plot
+plt.text(
+    x=yearly_aggregated['Year'].min() + 0.5,  # Adjust the x position
+    y=max_moving_avg * 1.05,  # Slightly above the maximum y value
+    s=f"Yearly Metrics:\nRMSE: {yearly_rmse:.2f}\nHit Rate: {yearly_hit_rate:.2%}",
+    fontsize=12,
+    color="black",
+    ha="left",
+    va="bottom"
+)
+
+# Add titles and labels
+plt.title("Yearly Moving Average of Net Loss with Metrics", fontsize=16)
+plt.ylabel("Moving Average of Net Loss", fontsize=12)
+plt.xlabel("Year", fontsize=12)
+
+# Enable grid for better readability
+plt.grid(True, linestyle='--', alpha=0.7)
+
+# Show the plot
+plt.tight_layout()
+plt.show()
+
+# Assuming 'yearly_hit_rate' is a single float, we need to structure it for the heatmap.
+# Create a DataFrame for the Hit Rate, with each year as a column and the hit rate as the value.
+hit_rate_data = {
+    'Year': [2021, 2022, 2023, 2024],  # Example years
+    'Hit Rate': [yearly_hit_rate] * 4   # Repeat the hit rate value for each year (for demonstration purposes)
+}
+
+hit_rate_df = pd.DataFrame(hit_rate_data).set_index('Year').T
+
+# Heatmap for Hit Rate
+plt.figure(figsize=(12, 6))
+
+# Plot the heatmap with annotations
+sns.heatmap(
+    hit_rate_df, 
+    annot=True, 
+    fmt=".2%", 
+    cmap="coolwarm", 
+    linewidths=0.5
+)
+
+# Adding title and labels
+plt.title("Yearly Hit Rate by Event Type", fontsize=16)
+plt.ylabel("Metric", fontsize=12)
+plt.xlabel("Year", fontsize=12)
+
+# Show the heatmap
+plt.tight_layout()
+plt.show()
+
+ 
+ 
+# Yearly Hit Rate by Event Type
+import seaborn as sns
+yearly_hit_rate = yearly_aggregated.groupby(['Year', 'Event Type'])['Hit'].mean().unstack()
+
+plt.figure(figsize=(12, 6))
+sns.heatmap(yearly_hit_rate, annot=True, fmt=".2%", cmap="coolwarm", linewidths=0.5)
+plt.title("Yearly Hit Rate by Event Type")
+plt.ylabel("Year")
+plt.xlabel("Event Type")
+plt.show()
+
+# Quarterly Hit Rate by Event Type
+quarterly_hit_rate = quarterly_aggregated.groupby(['Quarter', 'Event Type'])['Hit'].mean().unstack()
+
+plt.figure(figsize=(12, 6))
+sns.heatmap(quarterly_hit_rate, annot=True, fmt=".2%", cmap="coolwarm", linewidths=0.5)
+plt.title("Quarterly Hit Rate by Event Type")
+plt.ylabel("Quarter")
+plt.xlabel("Event Type")
+plt.show()
+
+
+ 
+ 
+ 
+ 
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import mean_squared_error
+# Assuming df is your DataFrame
+df['Quarter'] = pd.to_datetime(df['Date']).dt.quarter
+df['Year'] = pd.to_datetime(df['Date']).dt.year
+# Moving Average Calculation
+df['Quarterly Moving Avg (Net Loss)'] = df.groupby(['Year', 'Quarter'])['Net Loss Amount'].transform(lambda x: x.rolling(2, min_periods=1).mean())
+df['Yearly Moving Avg (Net Loss)'] = df.groupby(['Year'])['Net Loss Amount'].transform(lambda x: x.rolling(2, min_periods=1).mean())
+# Calculate yearly and quarterly aggregate data
+quarterly_data = df.groupby(['Year', 'Quarter'])[['Net Loss Amount', 'Event Count']].sum().reset_index()
+yearly_data = df.groupby(['Year'])[['Net Loss Amount', 'Event Count']].sum().reset_index()
+
+# MSE and RMSE for Net Loss Amount
+mse_quarterly = mean_squared_error(quarterly_data['Net Loss Amount'], quarterly_data['Net Loss Amount'])
+rmse_quarterly = np.sqrt(mse_quarterly)
+
+mse_yearly = mean_squared_error(yearly_data['Net Loss Amount'], yearly_data['Net Loss Amount'])
+rmse_yearly = np.sqrt(mse_yearly)
+
+print(f"Quarterly RMSE: {rmse_quarterly}")
+print(f"Yearly RMSE: {rmse_yearly}")
+---------------------------------------------------------------------------
+KeyError                                  Traceback (most recent call last)
+Cell In[11], line 2
+      1 # Calculate yearly and quarterly aggregate data
+----> 2 quarterly_data = df.groupby(['Year', 'Quarter'])[['Net Loss Amount', 'Event Count']].sum().reset_index()
+      3 yearly_data = df.groupby(['Year'])[['Net Loss Amount', 'Event Count']].sum().reset_index()
+      5 # MSE and RMSE for Net Loss Amount
+
+File ~\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\groupby\generic.py:1951, in DataFrameGroupBy.__getitem__(self, key)
+   1944 if isinstance(key, tuple) and len(key) > 1:
+   1945     # if len == 1, then it becomes a SeriesGroupBy and this is actually
+   1946     # valid syntax, so don't raise
+   1947     raise ValueError(
+   1948         "Cannot subset columns with a tuple with more than one element. "
+   1949         "Use a list instead."
+   1950     )
+-> 1951 return super().__getitem__(key)
+
+File ~\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas\core\base.py:239, in SelectionMixin.__getitem__(self, key)
+    237     if len(self.obj.columns.intersection(key)) != len(set(key)):
+    238         bad_keys = list(set(key).difference(self.obj.columns))
+--> 239         raise KeyError(f"Columns not found: {str(bad_keys)[1:-1]}")
+    240     return self._gotitem(list(key), ndim=2)
+    242 else:
+
+KeyError: "Columns not found: 'Event Count'"
+# Define thresholds for significant events
+threshold_loss = 1_000_000  # Example: $1M
+threshold_events = 50       # Example: 50 events
+
+# Quarterly Hit Rate
+quarterly_hits = quarterly_data[(quarterly_data['Net Loss Amount'] > threshold_loss) | (quarterly_data['Event Count'] > threshold_events)].shape[0]
+quarterly_total = quarterly_data.shape[0]
+quarterly_hit_rate = quarterly_hits / quarterly_total
+
+# Yearly Hit Rate
+yearly_hits = yearly_data[(yearly_data['Net Loss Amount'] > threshold_loss) | (yearly_data['Event Count'] > threshold_events)].shape[0]
+yearly_total = yearly_data.shape[0]
+yearly_hit_rate = yearly_hits / yearly_total
+
+print(f"Quarterly Hit Rate: {quarterly_hit_rate}")
+print(f"Yearly Hit Rate: {yearly_hit_rate}")
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+Cell In[12], line 6
+      3 threshold_events = 50       # Example: 50 events
+      5 # Quarterly Hit Rate
+----> 6 quarterly_hits = quarterly_data[(quarterly_data['Net Loss Amount'] > threshold_loss) | (quarterly_data['Event Count'] > threshold_events)].shape[0]
+      7 quarterly_total = quarterly_data.shape[0]
+      8 quarterly_hit_rate = quarterly_hits / quarterly_total
+
+NameError: name 'quarterly_data' is not defined
+# Plot Moving Averages
+plt.figure(figsize=(12, 6))
+plt.plot(df['Year'], df['Yearly Moving Avg (Net Loss)'], label='Yearly Moving Average')
+plt.plot(df['Quarter'], df['Quarterly Moving Avg (Net Loss)'], label='Quarterly Moving Average')
+plt.title('Moving Average Comparison')
+plt.xlabel('Time')
+plt.ylabel('Net Loss Amount')
+plt.legend()
+plt.show()
+
+# Bar Chart
+metrics = ['MSE', 'RMSE']
+values = [mse_yearly, rmse_yearly, mse_quarterly, rmse_quarterly]
+labels = ['Yearly MSE', 'Yearly RMSE', 'Quarterly MSE', 'Quarterly RMSE']
+
+plt.figure(figsize=(8, 5))
+plt.bar(labels, values, color=['blue', 'blue', 'green', 'green'])
+plt.title('MSE and RMSE Comparison')
+plt.ylabel('Error')
+plt.show()
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+Cell In[14], line 3
+      1 # Bar Chart
+      2 metrics = ['MSE', 'RMSE']
+----> 3 values = [mse_yearly, rmse_yearly, mse_quarterly, rmse_quarterly]
+      4 labels = ['Yearly MSE', 'Yearly RMSE', 'Quarterly MSE', 'Quarterly RMSE']
+      6 plt.figure(figsize=(8, 5))
+
+NameError: name 'mse_yearly' is not defined
+# Hit Rate Comparison
+hit_rates = [yearly_hit_rate, quarterly_hit_rate]
+categories = ['Yearly', 'Quarterly']
+
+plt.figure(figsize=(8, 5))
+plt.bar(categories, hit_rates, color=['blue', 'green'])
+plt.title('Hit Rate Comparison')
+plt.ylabel('Hit Rate')
+plt.ylim(0, 1)
+plt.show()
+3. Interpretation
+Moving Average: If quarterly data shows more detailed patterns (e.g., seasonal spikes), it may suggest finer control or monitoring is needed.
+MSE/RMSE: Lower RMSE values in quarterly analysis indicate better prediction accuracy.
+Hit Rate: Higher hit rates for quarterly analysis indicate better sensitivity to anomalies.
+Actionable Insight:
+
+Recommend quarterly analysis for operational strategies like anomaly detection, forecasting, and detailed monitoring.
+Use yearly analysis for high-level summaries and long-term planning.
+Let me know if you need further clarifications!
+
+
+
+ # hit rate w r t event counts
+  HOW THESE METRIVC HELP TO UNDER WHICH IS BETTER YAERLY OR QUATERLY
+
+ChatGPT said:
+ChatGPT
+The metrics—MAE, MSE, RMSE, and Hit Rate—help evaluate the accuracy and performance of different models or approaches. In the context of yearly vs. quarterly aggregation, comparing these metrics can provide insights into which time period (yearly or quarterly) offers more reliable or accurate predictions for the "Net Loss Amount."
+
+Here’s how each of the metrics helps in determining which aggregation (yearly or quarterly) is better:
+
+1. Mean Absolute Error (MAE)
+What it measures: MAE measures the average magnitude of the errors in the predictions, without considering their direction. It’s simply the average of the absolute differences between the predicted and actual values.
+Interpretation:
+Lower MAE indicates better prediction accuracy. If the quarterly aggregation has a lower MAE, it suggests that the quarterly predictions are closer to the actual values on average, making it a better option.
+Higher MAE indicates more error in predictions. In that case, the yearly aggregation might be more stable, but the quarterly method might suffer from more variability due to the shorter time frame.
+Comparison: If you find that the quarterly aggregation has a lower MAE, it indicates that predictions made on a quarterly basis are more accurate on average compared to yearly predictions. Conversely, if yearly aggregation has a lower MAE, it suggests that long-term predictions might be less volatile and more reliable.
+2. Mean Squared Error (MSE)
+What it measures: MSE is similar to MAE but penalizes large errors more heavily. It’s the average of the squared differences between predicted and actual values.
+
+Interpretation:
+
+Lower MSE means better model accuracy, especially when dealing with large deviations in predictions. A higher MSE indicates more significant prediction errors, particularly for large discrepancies.
+MSE is sensitive to outliers, so if the quarterly data has extreme values (outliers), MSE will be higher for quarterly predictions. If yearly aggregation shows fewer extreme fluctuations, MSE will be lower.
+Comparison: If yearly aggregation produces a lower MSE, it indicates that it handles large errors or outliers better. If quarterly aggregation has lower MSE, it could indicate that quarterly predictions are generally more precise, except for large deviations.
+
+3. Root Mean Squared Error (RMSE)
+What it measures: RMSE is the square root of the MSE and provides an estimate of how much the predicted values deviate from the actual values. It’s in the same units as the original data, making it easier to interpret.
+Interpretation:
+Lower RMSE implies better accuracy and precision in the predictions. Like MSE, it penalizes large errors.
+RMSE tends to be more intuitive than MSE because it’s expressed in the same units as the original data, such as "Net Loss Amount."
+Comparison: If the quarterly aggregation shows a lower RMSE, it means that the predictions for the quarters are closer to the actual values on average (especially for smaller errors). If yearly aggregation shows a lower RMSE, it suggests that long-term predictions tend to have smaller average errors compared to quarterly predictions.
+4. Hit Rate
+What it measures: Hit Rate is the proportion of correct predictions where the predicted value exceeds a certain threshold (e.g., $5,000 in net loss). It’s often used to evaluate how often a model's prediction is considered successful.
+
+Interpretation:
+
+Higher Hit Rate indicates better success at predicting important events, like significant net losses.
+A lower Hit Rate suggests that the model is less effective at correctly predicting significant events or values.
+Comparison: If quarterly aggregation has a higher Hit Rate, it indicates that the quarterly model is more effective at predicting significant events (e.g., net losses greater than $5,000) within a shorter time frame. A higher Hit Rate for yearly aggregation could indicate that long-term predictions are better at forecasting major losses, but may miss the nuances of shorter-term variations.
+
+Which is Better? Yearly or Quarterly?
+Yearly Aggregation is likely better when:
+
+The data has long-term trends that need to be captured.
+You want more stable, less volatile predictions (e.g., financial data with strong seasonal patterns or overall trends).
+There are fewer extreme outliers in the data.
+You prioritize avoiding overfitting or making decisions based on short-term noise.
+Quarterly Aggregation is likely better when:
+
+Short-term trends or fluctuations are important (e.g., in businesses where quarterly financial results or risks are more relevant).
+You need to capture more granular patterns or anomalies that occur more frequently in a shorter time frame.
+The data shows cyclical behavior that can vary more within a year.
+You want predictions that capture more immediate changes and risks.
+Final Decision:
+If MAE and RMSE are lower for the quarterly aggregation, and the Hit Rate is higher for significant predictions, quarterly might be the better option for making more precise and timely predictions, especially in volatile conditions.
+If MSE is higher for quarterly data, suggesting greater variability in the predictions, and the Hit Rate is lower, then yearly aggregation might provide a more stable and reliable prediction approach.
+By analyzing all the metrics together, you can make a more informed decision on which approach (yearly vs. quarterly) works better for your specific data and prediction goals.
+
+
+
+
+
+You said:
+Hit rate why onlu for netloss 
+ChatGPT said:
+ChatGPT
+The Hit Rate metric is typically applied to scenarios where the goal is to predict whether a specific event or threshold will occur. In your case, it was initially applied to Net Loss Amount because this is a common financial metric of interest, especially when predicting large losses or significant events (e.g., major financial incidents like fraud, system failure, etc.).
+
+However, Hit Rate can be applied to any binary outcome, not just Net Loss Amount. Here are some reasons for applying it specifically to Net Loss in the context of operational risk analysis, but also why you can use it for other variables:
+
+1. For Net Loss Amount:
+Hit Rate is typically used to assess how often the model correctly predicts whether the Net Loss exceeds a specific threshold. For example:
+Hit Rate for large losses (e.g., > $5,000): This is useful to determine how effectively the model is at predicting significant losses that could have a material impact on the organization.
+If you set a threshold for net loss (e.g., predicting whether an event will cause a loss greater than $10,000), the Hit Rate tells you the percentage of times the model successfully predicted this large loss.
+This is particularly useful for risk management, where it's critical to predict large or impactful events that might require immediate action or mitigation.
+2. Hit Rate for Other Variables:
+The concept of Hit Rate can be extended to other variables as well, not just Net Loss. Here's how you could apply Hit Rate to other aspects of the dataset:
+
+Event Types: You can calculate Hit Rate for specific types of events (e.g., Fraud, System Failure). In this case, the hit rate would measure how often the model correctly predicts that a certain event type will occur within a given time period or under certain conditions. For example:
+
+Hit Rate for Fraud Prediction: This tells you the proportion of times the model correctly predicts that fraud will occur based on its features.
+Business Lines: If you're predicting losses or events for specific Business Lines (e.g., Retail, Insurance), you can calculate the Hit Rate for each business line to see how well the model predicts significant events or losses in those business sectors.
+
+Event Descriptions: If you want to predict specific event Descriptions (e.g., "Server downtime", "Unauthorized transaction"), you can calculate a Hit Rate for how often the model predicts those specific descriptions accurately.
+
+How to Generalize Hit Rate Beyond Net Loss:
+For Event Type Prediction:
+
+True Positives: The number of times the model correctly predicted a specific event type.
+False Positives: The number of times the model incorrectly predicted that an event would happen, but it didn’t.
+Hit Rate for Event Type: Hit Rate = True Positives / (True Positives + False Positives).
+For Business Line Prediction:
+
+If your model predicts losses for a particular business line (e.g., Retail, Insurance), the Hit Rate can tell you how accurately your model is predicting significant events for each line. For instance:
+True Positives: Number of correct predictions for events within the "Retail" business line.
+False Positives: Number of incorrect predictions for events that were not in the "Retail" line.
+Hit Rate for Business Line: Hit Rate = True Positives / (True Positives + False Positives).
+For Descriptive Event Matching:
+
+If your model is trained to predict specific event descriptions, you could apply Hit Rate to measure how well it predicts major events accurately. For example, predicting "Unauthorized Transaction" as an event description in a fraud scenario.
+Conclusion:
+The Hit Rate metric is versatile and can be applied to many different predictions, including event types, business lines, and even event descriptions, in addition to Net Loss Amount. It's essentially a binary classification problem—whether the model correctly predicts the occurrence of a specific event or condition—and can be used to evaluate the model’s performance in any context where you care about the success rate of specific predictions, not just financial outcomes.
+
+So, it’s not limited to Net Loss; it can be used for any target variable you're trying to predict.
+
+
+
+
+
+You said:
+can be pply onm eventy counts
+ChatGPT said:
+ChatGPT
+Yes, the Hit Rate can also be applied to Event Counts, depending on the scenario and what you're trying to predict or measure.
+
+How to Apply Hit Rate on Event Counts:
+If you're trying to predict the count of events (e.g., how many times a specific type of event will occur in a given period), you can use the Hit Rate to evaluate the accuracy of those predictions.
+
+Here’s how the Hit Rate can be applied in the context of Event Counts:
+
+Define a Threshold for Event Count:
+
+First, you need to define what constitutes a "hit" in terms of event counts. For example, you might set a threshold for the number of events that should occur within a time period (e.g., predicting whether there will be more than 5 fraud events in a quarter).
+True Positives:
+
+These are the instances where the model correctly predicted that the number of events in a given period exceeds the threshold. For example, the model correctly predicts that there will be 6 fraud events in Q1, and the actual count is also 6 or higher.
+False Positives:
+
+These are the cases where the model predicted that the number of events would exceed the threshold, but the actual event count was lower. For example, the model predicted 6 fraud events, but only 3 fraud events occurred.
+False Negatives:
+
+These are the cases where the model predicted that the number of events would be below the threshold, but the actual count was higher. For example, the model predicted only 3 fraud events, but 6 fraud events occurred.
+Hit Rate Formula:
+
+The Hit Rate can be calculated as:
+Hit Rate
+=
+True Positives
+True Positives
++
+False Positives
+Hit Rate= 
+True Positives+False Positives
+True Positives
+​
+ 
+This metric will give you the percentage of times the model correctly predicted that the event count would exceed a certain threshold.
+Example:
+Imagine you're predicting the number of fraud events that will happen in a quarter. You define a threshold of 5 fraud events in a quarter.
+
+True Positive: The model predicted more than 5 fraud events, and there were more than 5 fraud events.
+False Positive: The model predicted more than 5 fraud events, but there were fewer than 5.
+False Negative: The model predicted fewer than 5 fraud events, but there were more than 5.
+The Hit Rate will tell you how well the model can correctly predict whether a certain number of events will occur, making it a useful metric for event count predictions.
+
+Visualization of Hit Rate for Event Counts:
+You can visualize the Hit Rate for different thresholds of event counts to see how well your model performs across a range of event numbers.
+
+Thresholds: You could evaluate the Hit Rate for different thresholds of event counts (e.g., how well the model predicts whether there will be more than 5, 10, 15 events, etc.).
+Comparison: You could compare the Hit Rate for different event types or business lines.
+Conclusion:
+The Hit Rate is not just limited to predicting outcomes like Net Loss; it can also be applied to Event Counts to evaluate how well your model predicts the occurrence of a specific number of events in a given time period. By setting thresholds for event counts, you can measure the accuracy of your model's predictions and assess its performance in predicting the frequency of events.
+
+
+
+
+
+You said:
+code
+ChatGPT said:
+ChatGPT
+To apply the Hit Rate for Event Counts in your dataset, you can follow the steps outlined below. This code will compute the Hit Rate for each quarter or year, based on event counts exceeding a threshold for a given period.
+
+Here's the implementation:
+
+python
+Copy code
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Function to generate random dates
+def random_dates(start, end, n=10):
+    return [start + timedelta(days=np.random.randint(0, (end - start).days)) for _ in range(n)]
+
+# Parameters
+num_records = 10000
+start_date = datetime.now() - timedelta(days=4*365)
+end_date = datetime.now()
+
+# Expanded categories
+business_lines = [
+    "Retail", "Corporate Banking", "Investment Banking", "Insurance",
+    "Wealth Management", "Asset Management", "Private Banking",
+    "Credit Card Services", "Mortgage Lending", "Financial Advisory"
+]
+
+event_types = [
+    "Fraud", "System Failure", "Theft", "Compliance", "Natural Disaster",
+    "Cyber Attack", "Market Risk", "Operational Error", "Vendor Risk", "Regulatory Violation"
+]
+
+# Generate data
+data = {
+    "Date": random_dates(start_date, end_date, num_records),
+    "Unique Event ID": [f"EID{str(i).zfill(5)}" for i in range(num_records)],
+    "Event Type": np.random.choice(event_types, num_records),
+    "Business Line": np.random.choice(business_lines, num_records),
+    "Event Description": np.random.choice(
+        [
+            "Unauthorized transaction", "Server downtime", "Lost assets", 
+            "Regulatory fines", "Data breach", "Network failure", 
+            "Inadequate compliance", "Financial misstatement", 
+            "Supplier issues", "Internal fraud"
+        ],
+        num_records
+    ),
+    "Net Loss Amount": np.random.choice(
+        [np.random.uniform(-10000, 0) for _ in range(num_records // 2)] + 
+        [np.random.uniform(0, 10000) for _ in range(num_records // 2)],
+        num_records
+    )
+}
+
+# Create DataFrame
+df = pd.DataFrame(data)
+
+# Add Year and Quarter columns
+df['Year'] = df['Date'].dt.year
+df['Quarter'] = df['Date'].dt.to_period('Q')
+
+# Define a threshold for event counts
+threshold = 5
+
+# Aggregate data by Year and Quarter for Event Counts
+yearly_event_counts = df.groupby('Year')['Event Type'].count()
+quarterly_event_counts = df.groupby('Quarter')['Event Type'].count()
+
+# Define Hit Rate calculation function
+def calculate_hit_rate(actual_counts, threshold):
+    """
+    Calculate Hit Rate for event counts exceeding the threshold.
+    """
+    hits = actual_counts > threshold
+    true_positives = hits.sum()
+    false_positives = (hits == False).sum()
+    total = len(hits)
+    
+    hit_rate = true_positives / total if total > 0 else 0
+    return hit_rate
+
+# Calculate Hit Rate for Yearly and Quarterly Event Counts
+yearly_hit_rate = calculate_hit_rate(yearly_event_counts, threshold)
+quarterly_hit_rate = calculate_hit_rate(quarterly_event_counts, threshold)
+
+# Print results
+print(f"Yearly Hit Rate: {yearly_hit_rate:.2%}")
+print(f"Quarterly Hit Rate: {quarterly_hit_rate:.2%}")
+
+# Visualize the Hit Rate for Yearly vs. Quarterly
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.bar(['Yearly', 'Quarterly'], [yearly_hit_rate, quarterly_hit_rate], color=['blue', 'green'])
+ax.set_ylabel('Hit Rate')
+ax.set_title('Hit Rate Comparison for Yearly vs. Quarterly Event Counts')
+plt.show()
+Steps Explanation:
+Data Generation:
+
+The dataset is generated with random event types and dates for num_records (10,000 events in this case).
+Each event has an associated Net Loss Amount, Event Type, and Business Line.
+Year and Quarter:
+
+Year and Quarter columns are added to the dataframe for aggregation.
+Event Count Aggregation:
+
+The event counts are aggregated by Year and Quarter using groupby() and counting the Event Type.
+Hit Rate Calculation:
+
+The Hit Rate is calculated using the defined function calculate_hit_rate(). This function checks how often the actual number of events exceeds a defined threshold (in this case, 5 events).
+Visualization:
+
+A bar plot is created to compare the Hit Rate for Yearly vs. Quarterly event counts.
+Metrics:
+The Hit Rate is computed for both Yearly and Quarterly aggregations.
+The result is printed as a percentage and also visualized in a bar plot.
+Output:
+Hit Rate for Yearly and Quarterly event counts will be shown as percentages in the console.
+The bar chart compares the Hit Rate between the Yearly and Quarterly event counts.
